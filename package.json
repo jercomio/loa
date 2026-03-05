@@ -1,0 +1,31 @@
+{
+  "name": "lunar-orbiter-algorithms",
+  "version": "1.5.0",
+  "author": "Joël ROURE",
+  "Pseudonym": "Jercom",
+  "email": "contact@jercom.io",
+  "website": "https://jercom.io",
+  "repository": "https://github.com/jercom/lunar-orbiter-algorithms",
+  "bugs": "https://github.com/jercom/lunar-orbiter-algorithms/issues",
+  "homepage": "https://github.com/jercom/lunar-orbiter-algorithms",
+  "keywords": [
+    "lunar",
+    "orbiter",
+    "algorithms",
+    "library",
+    "javascript",
+    "typescript",
+    "nodejs",
+    "browser",
+    "web"
+  ],
+  "license": "MIT",
+  "description": "Lunar Orbiter Algorithms",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
