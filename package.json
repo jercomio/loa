@@ -21,11 +21,17 @@
   ],
   "license": "MIT",
   "description": "Lunar Orbiter Algorithms",
+  "type": "module",
+  "bin": {
+    "loa": "./cli/loa-cli.mjs"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "loa:cli": "node ./cli/loa-cli.mjs"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
