@@ -120,7 +120,7 @@ const ordered = loa.permutation(items, pattern);
   ids: {
     title: "Identifiers",
     subtitle:
-      "Compact identifiers generated from UUIDs, numbers or short strings with optional prefixes.",
+      "Compact identifiers generated from UUIDs, numbers or short strings with optional prefixes, plus deterministic passwords from email + image.",
     items: [
       {
         name: "splitUUIDAndPrefixed(uuid, prefix?)",
@@ -140,6 +140,21 @@ const id2 = loa.splitUUIDAndPrefixed(uuid2, prefix);
 
 const id3 = loa.splitUUIDAndPrefixed(uuid3, prefix);
 // "jercom_testxxxx"`,
+      },
+      {
+        name: "generatePasswordFromEmailAndImage(email, imageBytes)",
+        badge: "Password",
+        summary:
+          "Builds a deterministic password-like string from a user email and the binary content of a PNG/JPG image (limited to 10 MB).",
+        example: `import loa from "loa.ts";
+
+// In a browser context:
+async function fromFile(email, file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const password = loa.generatePasswordFromEmailAndImage(email, bytes);
+  // password is a 24-character deterministic string
+}`,
       },
     ],
   },
@@ -195,6 +210,24 @@ const result = loa.strBetweenSpecialChar(pattern, "##", true, "span");
 
 // In React:
 // <div dangerouslySetInnerHTML={{ __html: result ?? "" }} />`,
+      },
+    ],
+  },
+  colors: {
+    title: "Colors & visualization",
+    subtitle:
+      "Generate deterministic HSL colors from arbitrary strings to keep your UI palettes consistent.",
+    items: [
+      {
+        name: "stringToHslColor(content, hueRange?, saturation?, lightness?)",
+        badge: "Color",
+        summary:
+          "Maps any string to a stable HSL color. Optionally constrain the hue range and tweak saturation/lightness for different themes.",
+        example: `const color = loa.stringToHslColor("User A", [120, 240], 65, 50);
+// color => "hsl(178, 65%, 50%)" (example value)
+
+// In React / Next.js:
+// <div style={{ backgroundColor: color }}>User A</div>`,
       },
     ],
   },

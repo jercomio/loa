@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import type { LoaResult } from "@/lib/loaClient";
+import { loaClient } from "@/lib/loaClient";
 import { useState } from "react";
 import { categories, tools, type ToolCategoryId } from "./loaRegistry";
 
@@ -17,6 +19,11 @@ export function LoaExplorer() {
     useState<ToolCategoryId>("strings");
   const [values, setValues] = useState<ValuesState>({});
   const [results, setResults] = useState<ResultsState>({});
+  const [uuidEmail, setUuidEmail] = useState<string>("");
+  const [uuidImageFile, setUuidImageFile] = useState<File | null>(null);
+  const [uuidImageResult, setUuidImageResult] =
+    useState<LoaResult<string | undefined> | null>(null);
+  const [uuidImageInputKey, setUuidImageInputKey] = useState<number>(0);
 
   const categoryTools = tools.filter(
     (tool) => tool.category === activeCategory,
@@ -44,6 +51,53 @@ export function LoaExplorer() {
       delete next[toolId];
       return next;
     });
+  };
+
+  const handleResetUuidFromImage = () => {
+    setUuidEmail("");
+    setUuidImageFile(null);
+    setUuidImageResult(null);
+    setUuidImageInputKey((current) => current + 1);
+  };
+
+  const handleRunUuidFromImage = async () => {
+    const email = uuidEmail.trim();
+    const file = uuidImageFile;
+
+    if (!email || !file) {
+      setUuidImageResult({
+        ok: false,
+        error: "Email and image file are both required.",
+      });
+      return;
+    }
+
+    const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setUuidImageResult({
+        ok: false,
+        error: "Image is too large. Maximum allowed size is 10 MB.",
+      });
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const result = loaClient.generatePasswordFromEmailAndImage({
+        email,
+        imageBytes: bytes,
+      }) as LoaResult<string | undefined>;
+      setUuidImageResult(result);
+    } catch (error) {
+      setUuidImageResult({
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unexpected error while processing image.",
+      });
+    }
   };
 
   const handleRun = (toolId: string) => {
@@ -172,13 +226,91 @@ export function LoaExplorer() {
                       tool.id === "strBetweenSpecialChar" ||
                       tool.id === "fibonacciRectDraw"
                         ? "Check browser console for extra LOA logs."
-                        : undefined
+                        : tool.id === "stringToHslColor"
+                          ? "Result is both a raw HSL string and a live color preview."
+                          : undefined
                     }
                   />
                   <LoaWarningTerminal warnings={results[tool.id]?.warnings} />
                 </CardContent>
               </Card>
             ))}
+            {activeCategory === "ids" && (
+              <Card className="flex h-full flex-col border-muted-foreground border-dashed">
+                <CardHeader>
+                  <CardTitle className="text-base md:text-lg">
+                    Password from email + image
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground md:text-sm">
+                    Generate a deterministic password from an email address and a PNG/JPG image (limited to 10 MB).
+                  </p>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col gap-3">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="uuid-email"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        Email
+                      </label>
+                      <Input
+                        id="uuid-email"
+                        type="email"
+                        placeholder="user@example.com"
+                        value={uuidEmail}
+                        onChange={(event) => setUuidEmail(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="uuid-image"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        Image (PNG or JPG, ≤ 10 MB)
+                      </label>
+                      <Input
+                        key={uuidImageInputKey}
+                        id="uuid-image"
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        onChange={(event) => {
+                          const file =
+                            event.target.files && event.target.files[0]
+                              ? event.target.files[0]
+                              : null;
+                          setUuidImageFile(file);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full md:w-auto"
+                      onClick={handleResetUuidFromImage}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="w-full md:w-auto"
+                      onClick={handleRunUuidFromImage}
+                    >
+                      Run
+                    </Button>
+                  </div>
+                  <ResultPanel
+                    result={uuidImageResult}
+                    hint="Result is a deterministic password based on email + image bytes."
+                  />
+                  <LoaWarningTerminal
+                    warnings={uuidImageResult?.warnings}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </ScrollArea>

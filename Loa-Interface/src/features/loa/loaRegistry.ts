@@ -20,6 +20,7 @@ export type ToolCategoryId =
   | 'golden'
   | 'fibonacci'
   | 'markdown'
+  | 'colors'
 
 export type ToolConfig = {
   id: string
@@ -49,6 +50,66 @@ export const tools: ToolConfig[] = [
       loaClient.capitalize({
         value: (values.value as string) ?? '',
       }),
+  },
+  {
+    id: 'stringToHslColor',
+    category: 'colors',
+    label: 'String to HSL color',
+    description:
+      'Generate a deterministic HSL color from a string with optional range.',
+    fields: [
+      {
+        name: 'content',
+        label: 'Content',
+        type: 'string',
+        placeholder: 'Some identifier or label',
+        required: true,
+      },
+      {
+        name: 'minHue',
+        label: 'Min hue (0–360)',
+        type: 'number',
+        defaultValue: 0,
+      },
+      {
+        name: 'maxHue',
+        label: 'Max hue (0–360)',
+        type: 'number',
+        defaultValue: 360,
+      },
+      {
+        name: 'saturation',
+        label: 'Saturation (0–100)',
+        type: 'number',
+        defaultValue: 65,
+      },
+      {
+        name: 'lightness',
+        label: 'Lightness (0–100)',
+        type: 'number',
+        defaultValue: 50,
+      },
+    ],
+    run: (values) => {
+      const content = (values.content as string) ?? ''
+
+      const minHueRaw = values.minHue as number | undefined
+      const maxHueRaw = values.maxHue as number | undefined
+      const saturationRaw = values.saturation as number | undefined
+      const lightnessRaw = values.lightness as number | undefined
+
+      const hasHueRange =
+        typeof minHueRaw === 'number' && typeof maxHueRaw === 'number'
+
+      return loaClient.stringToHslColor({
+        content,
+        hueRange: hasHueRange ? [minHueRaw, maxHueRaw] : undefined,
+        saturation:
+          typeof saturationRaw === 'number' ? saturationRaw : undefined,
+        lightness:
+          typeof lightnessRaw === 'number' ? lightnessRaw : undefined,
+      })
+    },
   },
   {
     id: 'stringToSlug',
@@ -299,5 +360,6 @@ export const categories = [
   { id: 'golden', label: 'Golden ratio' },
   { id: 'fibonacci', label: 'Fibonacci rect' },
   { id: 'markdown', label: 'Markdown tags' },
+  { id: 'colors', label: 'Colors' },
 ] as const
 

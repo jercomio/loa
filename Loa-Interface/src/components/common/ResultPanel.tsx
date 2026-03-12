@@ -25,6 +25,11 @@ export function ResultPanel({ result, hint }: ResultPanelProps) {
     );
   }
 
+  const data = result.data;
+  const isHslColorString =
+    typeof data === "string" &&
+    /^hsl\(\s*\d+(\.\d+)?\s*,\s*\d+%?\s*,\s*\d+%?\s*\)$/i.test(data);
+
   return (
     <div className="space-y-2 rounded border border-muted-foreground/30 bg-background p-3">
       <div className="flex items-center justify-between gap-2 text-xs">
@@ -34,7 +39,23 @@ export function ResultPanel({ result, hint }: ResultPanelProps) {
         )}
       </div>
       <Separator />
-      <JsonViewer value={result.data} />
+      {isHslColorString && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-muted-foreground/40 bg-muted/30 p-2">
+          <div className="flex items-center gap-2">
+            <div
+              className="h-6 w-6 rounded-md border border-muted-foreground/50 shadow-sm"
+              style={{ background: data as string }}
+            />
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Color preview
+            </span>
+          </div>
+          <span className="truncate text-[11px] text-muted-foreground">
+            {data as string}
+          </span>
+        </div>
+      )}
+      <JsonViewer value={data} />
     </div>
   );
 }

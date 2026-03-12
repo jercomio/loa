@@ -102,6 +102,22 @@ export const loaClient = {
     );
   },
 
+  stringToHslColor(params: {
+    content: string;
+    hueRange?: [number, number];
+    saturation?: number;
+    lightness?: number;
+  }): LoaResult<string> {
+    return wrapCall(() =>
+      client.stringToHslColor(
+        params.content,
+        params.hueRange,
+        params.saturation,
+        params.lightness,
+      ),
+    );
+  },
+
   goldenRatioRound(): LoaResult<ReturnType<Loa["goldenRatioRound"]>> {
     return wrapCall(() => client.goldenRatioRound());
   },
@@ -137,6 +153,15 @@ export const loaClient = {
         params.tagBoolean,
         params.tagName,
       ),
+    );
+  },
+
+  generatePasswordFromEmailAndImage(params: {
+    email: string;
+    imageBytes: Uint8Array;
+  }): LoaResult<string | undefined> {
+    return wrapCall(() =>
+      client.generatePasswordFromEmailAndImage(params.email, params.imageBytes),
     );
   },
 };
