@@ -5,9 +5,10 @@ import { JsonViewer } from "@/components/common/JsonViewer";
 type ResultPanelProps = {
   result: LoaResult<unknown> | null;
   hint?: string;
+  action?: React.ReactNode;
 };
 
-export function ResultPanel({ result, hint }: ResultPanelProps) {
+export function ResultPanel({ result, hint, action }: ResultPanelProps) {
   if (!result) {
     return (
       <div className="rounded border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
@@ -34,9 +35,12 @@ export function ResultPanel({ result, hint }: ResultPanelProps) {
     <div className="space-y-2 rounded border border-muted-foreground/30 bg-background p-3">
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="font-semibold text-muted-foreground">Result</span>
-        {hint && (
-          <span className="text-[11px] text-muted-foreground">{hint}</span>
-        )}
+        <div className="flex items-center gap-2">
+          {action}
+          {hint && (
+            <span className="text-[11px] text-muted-foreground">{hint}</span>
+          )}
+        </div>
       </div>
       <Separator />
       {isHslColorString && (

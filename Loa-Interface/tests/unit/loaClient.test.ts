@@ -19,5 +19,14 @@ describe('loaClient', () => {
       expect(result.data).toBe('hotel-&-spa-all-inclusive')
     }
   })
+
+  it('generates time-based random string', () => {
+    const result = loaClient.timeBasedRandomString({ length: 12 })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data).toHaveLength(12)
+      expect(result.data).toMatch(/^[A-Za-z0-9]+$/)
+    }
+  })
 })
 
