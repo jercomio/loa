@@ -253,6 +253,59 @@ export const tools: ToolConfig[] = [
       }),
   },
   {
+    id: 'uniqueItemArray',
+    category: 'ids',
+    label: 'Unique item array',
+    description:
+      'Extract unique values from an array of objects with an `item` property.',
+    fields: [
+      {
+        name: 'items',
+        label: 'Items (comma separated)',
+        type: 'string',
+        placeholder: 'a,b,c,a',
+        required: true,
+      },
+    ],
+    run: (values) =>
+      loaClient.uniqueItemArray({
+        items: ((values.items as string) ?? '')
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
+      }),
+  },
+  {
+    id: 'timeBasedRandomString',
+    category: 'ids',
+    label: 'Time-based random string',
+    description:
+      'Alphanumeric string from wall clock + high-resolution time (not cryptographic).',
+    fields: [
+      {
+        name: 'length',
+        label: 'Length',
+        type: 'number',
+        defaultValue: 16,
+        helperText: 'Default 16. Re-run to get a new string.',
+      },
+    ],
+    run: (values) => {
+      const raw = values.length as string | number | undefined
+      const parsed =
+        typeof raw === 'number'
+          ? raw
+          : typeof raw === 'string'
+            ? Number(raw.trim())
+            : Number.NaN
+      const length =
+        Number.isFinite(parsed) && parsed > 0
+          ? Math.floor(parsed)
+          : 16
+      return loaClient.timeBasedRandomString({ length })
+    },
+  },
+  {
     id: 'goldenRatioRound',
     category: 'golden',
     label: 'Golden ratio round',

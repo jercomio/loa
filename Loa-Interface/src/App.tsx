@@ -156,6 +156,14 @@ async function fromFile(email, file) {
   // password is a 24-character deterministic string
 }`,
       },
+      {
+        name: "timeBasedRandomString(length?)",
+        badge: "Time-based",
+        summary:
+          "Builds an alphanumeric string from Date.now() and performance.now() per character (xorshift mix). Not for secrets.",
+        example: `const id = loa.timeBasedRandomString(24);
+// e.g. "aB3x..." — call again for a new value`,
+      },
     ],
   },
   golden: {

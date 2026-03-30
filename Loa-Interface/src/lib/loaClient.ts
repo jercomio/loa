@@ -102,6 +102,16 @@ export const loaClient = {
     );
   },
 
+  uniqueItemArray(params: {
+    items: string[];
+  }): LoaResult<string[] | undefined> {
+    return wrapCall(() =>
+      client.UniqueItemArray(
+        params.items.map((item) => ({ item })),
+      ),
+    );
+  },
+
   stringToHslColor(params: {
     content: string;
     hueRange?: [number, number];
@@ -162,6 +172,14 @@ export const loaClient = {
   }): LoaResult<string | undefined> {
     return wrapCall(() =>
       client.generatePasswordFromEmailAndImage(params.email, params.imageBytes),
+    );
+  },
+
+  timeBasedRandomString(params: {
+    length?: number;
+  }): LoaResult<string> {
+    return wrapCall(() =>
+      client.timeBasedRandomString(params.length),
     );
   },
 };

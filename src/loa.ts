@@ -74,7 +74,6 @@ interface PhiObject {
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const sha256 = (message: Uint8Array): Uint8Array => {
-  // SHA-256 implementation based on FIPS 180-4.
   const k = new Uint32Array([
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
     0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
@@ -195,7 +194,6 @@ const computeDeterministicPasswordFromEmailAndImage = (
   email: string,
   imageBytes: Uint8Array,
 ): string => {
-  // Cryptographic hash (SHA-256) combining email chars and image bytes.
   const encoder = new TextEncoder();
   const emailBytes = encoder.encode(email);
 
@@ -219,6 +217,35 @@ const computeDeterministicPasswordFromEmailAndImage = (
 
   return password;
 };
+
+const ALPHANUM =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+function timeBasedRandomString(length: number = 16): string {
+  const result: string[] = [];
+  const perf = globalThis.performance;
+  const t0 = perf !== undefined ? perf.now() : 0;
+
+  for (let i = 0; i < length; i++) {
+    const wall = Date.now();
+    // Un `now()` par caractère : horloge haute résolution avance entre chaque itération.
+    const p = perf !== undefined ? perf.now() : t0 + i * 0.001;
+    const microPart = Math.floor(p * 1_000_000) % 0x7fffffff;
+    const microElapsed = Math.floor((p - t0) * 1_000_000);
+
+    let value = (wall + microPart + microElapsed + i * 9973) >>> 0;
+
+    // Mélange de bits façon xorshift simplifié
+    value ^= (value << 13) >>> 0;
+    value ^= value >> 7;
+    value ^= (value << 17) >>> 0;
+
+    const index = Math.abs(value | 0) % ALPHANUM.length;
+    result.push(ALPHANUM[index]);
+  }
+
+  return result.join("");
+}
 
 export interface Loa {
   /**
@@ -280,6 +307,13 @@ export interface Loa {
   permutation(a: string[], b: number[]): string[] | undefined;
 
   /**
+   * @param {Array<{ item: T }>} arr An array of objects with a generic item property.
+   * @returns {Array<T>} An array of unique items.
+   * Return the unique values extracted from `arr[i].item`.
+   */
+  UniqueItemArray<T>(arr: Array<{ item: T }>): Array<T> | undefined;
+
+  /**
    *
    * @param a The initial value of string
    * @param value The replacement value: string, number or rationnal expression
@@ -324,6 +358,14 @@ export interface Loa {
     email: string,
     imageBytes: Uint8Array,
   ): string | undefined;
+
+  /**
+   * Chaîne alphanumérique pseudo-aléatoire : chaque caractère mélange l’heure murale,
+   * `performance.now()` (haute résolution) et le temps écoulé depuis le début de l’appel.
+   * Pas adapté à la cryptographie.
+   * @param length Longueur (défaut 16).
+   */
+  timeBasedRandomString(length?: number): string;
 
   /**
    * Generate a deterministic HSL color from a string.
@@ -510,6 +552,25 @@ const loa: Loa = {
     }
   },
 
+  UniqueItemArray<T>(arr: Array<{ item: T }>): Array<T> | undefined {
+    try {
+      if (!Array.isArray(arr)) {
+        logLoaWarning(
+          "color:red",
+          "\nUniqueItemArray function",
+          "\nThe type of 'arr' parameter is wrong",
+        );
+        return;
+      }
+
+      const uniqueItemArray = Array.from(new Set(arr.map((e) => e.item)));
+
+      return uniqueItemArray;
+    } catch (err) {
+      logLoaWarning("color:red", "\nUniqueItemArray function", `\n${err}`);
+    }
+  },
+
   updateString(
     a: string,
     value: string | RegExp,
@@ -576,7 +637,7 @@ const loa: Loa = {
       if (!email || typeof email !== "string") {
         logLoaWarning(
           "color:red",
-          "\ngenerateUuidFromEmailAndImage function",
+          "\ngeneratePasswordFromEmailAndImage function",
           "\nEmail parameter must be a non-empty string.",
         );
         return;
@@ -585,7 +646,7 @@ const loa: Loa = {
       if (!(imageBytes instanceof Uint8Array)) {
         logLoaWarning(
           "color:red",
-          "\ngenerateUuidFromEmailAndImage function",
+          "\ngeneratePasswordFromEmailAndImage function",
           "\nimageBytes parameter must be a Uint8Array.",
         );
         return;
@@ -594,7 +655,7 @@ const loa: Loa = {
       if (imageBytes.byteLength === 0) {
         logLoaWarning(
           "color:orange",
-          "\ngenerateUuidFromEmailAndImage function",
+          "\ngeneratePasswordFromEmailAndImage function",
           "\nImage buffer is empty.",
         );
       }
@@ -602,7 +663,7 @@ const loa: Loa = {
       if (imageBytes.byteLength > MAX_IMAGE_SIZE_BYTES) {
         logLoaWarning(
           "color:orange",
-          "\ngenerateUuidFromEmailAndImage function",
+          "\ngeneratePasswordFromEmailAndImage function",
           `\nImage is too large. Maximum allowed size is ${MAX_IMAGE_SIZE_BYTES} bytes (10 MB).`,
         );
         return;
@@ -612,11 +673,16 @@ const loa: Loa = {
     } catch (err) {
       logLoaWarning(
         "color:red",
-        "\ngenerateUuidFromEmailAndImage function",
+        "\ngeneratePasswordFromEmailAndImage function",
         `\n${err}`,
       );
     }
   },
+
+  timeBasedRandomString(length: number = 16): string {
+    return timeBasedRandomString(length);
+  },
+
   stringToHslColor(
     content: string,
     hueRange: [number, number] = [0, 360],

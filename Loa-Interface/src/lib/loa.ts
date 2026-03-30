@@ -218,6 +218,35 @@ const computeDeterministicPasswordFromEmailAndImage = (
   return password;
 };
 
+const ALPHANUM =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+function timeBasedRandomString(length: number = 16): string {
+  const result: string[] = [];
+  const perf = globalThis.performance;
+  const t0 = perf !== undefined ? perf.now() : 0;
+
+  for (let i = 0; i < length; i++) {
+    const wall = Date.now();
+    // Un `now()` par caractère : horloge haute résolution avance entre chaque itération.
+    const p = perf !== undefined ? perf.now() : t0 + i * 0.001;
+    const microPart = Math.floor(p * 1_000_000) % 0x7fffffff;
+    const microElapsed = Math.floor((p - t0) * 1_000_000);
+
+    let value = (wall + microPart + microElapsed + i * 9973) >>> 0;
+
+    // Mélange de bits façon xorshift simplifié
+    value ^= (value << 13) >>> 0;
+    value ^= value >> 7;
+    value ^= (value << 17) >>> 0;
+
+    const index = Math.abs(value | 0) % ALPHANUM.length;
+    result.push(ALPHANUM[index]);
+  }
+
+  return result.join("");
+}
+
 export interface Loa {
   /**
    *
@@ -278,6 +307,13 @@ export interface Loa {
   permutation(a: string[], b: number[]): string[] | undefined;
 
   /**
+   * @param {Array<{ item: T }>} arr An array of objects with a generic item property.
+   * @returns {Array<T>} An array of unique items.
+   * Return the unique values extracted from `arr[i].item`.
+   */
+  UniqueItemArray<T>(arr: Array<{ item: T }>): Array<T> | undefined;
+
+  /**
    *
    * @param a The initial value of string
    * @param value The replacement value: string, number or rationnal expression
@@ -322,6 +358,14 @@ export interface Loa {
     email: string,
     imageBytes: Uint8Array,
   ): string | undefined;
+
+  /**
+   * Chaîne alphanumérique pseudo-aléatoire : chaque caractère mélange l’heure murale,
+   * `performance.now()` (haute résolution) et le temps écoulé depuis le début de l’appel.
+   * Pas adapté à la cryptographie.
+   * @param length Longueur (défaut 16).
+   */
+  timeBasedRandomString(length?: number): string;
 
   /**
    * Generate a deterministic HSL color from a string.
@@ -508,6 +552,25 @@ const loa: Loa = {
     }
   },
 
+  UniqueItemArray<T>(arr: Array<{ item: T }>): Array<T> | undefined {
+    try {
+      if (!Array.isArray(arr)) {
+        logLoaWarning(
+          "color:red",
+          "\nUniqueItemArray function",
+          "\nThe type of 'arr' parameter is wrong",
+        );
+        return;
+      }
+
+      const uniqueItemArray = Array.from(new Set(arr.map((e) => e.item)));
+
+      return uniqueItemArray;
+    } catch (err) {
+      logLoaWarning("color:red", "\nUniqueItemArray function", `\n${err}`);
+    }
+  },
+
   updateString(
     a: string,
     value: string | RegExp,
@@ -615,6 +678,11 @@ const loa: Loa = {
       );
     }
   },
+
+  timeBasedRandomString(length: number = 16): string {
+    return timeBasedRandomString(length);
+  },
+
   stringToHslColor(
     content: string,
     hueRange: [number, number] = [0, 360],

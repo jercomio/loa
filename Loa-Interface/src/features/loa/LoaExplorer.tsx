@@ -1,33 +1,113 @@
 import { FormField } from "@/components/common/FormField";
-import { ResultPanel } from "@/components/common/ResultPanel";
 import { LoaWarningTerminal } from "@/components/common/LoaWarningTerminal";
+import { ResultPanel } from "@/components/common/ResultPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import type { LoaResult } from "@/lib/loaClient";
 import { loaClient } from "@/lib/loaClient";
-import { useState } from "react";
+import { Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { categories, tools, type ToolCategoryId } from "./loaRegistry";
 
 type ValuesState = Record<string, Record<string, unknown>>;
 type ResultsState = Record<string, LoaResult<unknown> | null>;
+const LIVE_ALPHANUM =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 export function LoaExplorer() {
   const [activeCategory, setActiveCategory] =
     useState<ToolCategoryId>("strings");
   const [values, setValues] = useState<ValuesState>({});
   const [results, setResults] = useState<ResultsState>({});
+  const [liveRunning, setLiveRunning] = useState<Record<string, boolean>>({});
   const [uuidEmail, setUuidEmail] = useState<string>("");
   const [uuidImageFile, setUuidImageFile] = useState<File | null>(null);
-  const [uuidImageResult, setUuidImageResult] =
-    useState<LoaResult<string | undefined> | null>(null);
+  const [uuidImageResult, setUuidImageResult] = useState<LoaResult<
+    string | undefined
+  > | null>(null);
   const [uuidImageInputKey, setUuidImageInputKey] = useState<number>(0);
+  const liveIntervalsRef = useRef<Record<string, number>>({});
 
   const categoryTools = tools.filter(
     (tool) => tool.category === activeCategory,
   );
+
+  const stopLiveResult = (toolId: string) => {
+    const intervalId = liveIntervalsRef.current[toolId];
+    if (intervalId !== undefined) {
+      window.clearInterval(intervalId);
+      delete liveIntervalsRef.current[toolId];
+    }
+    setLiveRunning((current) => ({ ...current, [toolId]: false }));
+  };
+
+  const startLiveResult = (toolId: string, length: number) => {
+    stopLiveResult(toolId);
+
+    const safeLength = Math.max(1, Math.floor(length || 16));
+    const intervalId = window.setInterval(() => {
+      const liveValue = Array.from({ length: safeLength }, () => {
+        const index = Math.floor(Math.random() * LIVE_ALPHANUM.length);
+        return LIVE_ALPHANUM.charAt(index);
+      }).join("");
+
+      setResults((current) => {
+        const existing = current[toolId];
+        if (!existing || !existing.ok) {
+          return current;
+        }
+        return {
+          ...current,
+          [toolId]: {
+            ok: true,
+            data: liveValue,
+            warnings: existing.warnings,
+          },
+        };
+      });
+    }, 90);
+
+    liveIntervalsRef.current[toolId] = intervalId;
+    setLiveRunning((current) => ({ ...current, [toolId]: true }));
+  };
+
+  const copyResultString = async (toolId: string) => {
+    const result = results[toolId];
+    if (!result || !result.ok || typeof result.data !== "string") return;
+
+    const text = result.data;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+    } catch {
+      // fallback below
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  };
+
+  useEffect(() => {
+    return () => {
+      Object.values(liveIntervalsRef.current).forEach((intervalId) => {
+        window.clearInterval(intervalId);
+      });
+      liveIntervalsRef.current = {};
+    };
+  }, []);
 
   const handleChange = (toolId: string, fieldName: string, next: unknown) => {
     setValues((current) => ({
@@ -40,6 +120,8 @@ export function LoaExplorer() {
   };
 
   const handleReset = (toolId: string) => {
+    stopLiveResult(toolId);
+
     setValues((current) => {
       const next = { ...current };
       delete next[toolId];
@@ -135,6 +217,16 @@ export function LoaExplorer() {
 
     const result = tool.run(toolValues);
     setResults((current) => ({ ...current, [toolId]: result }));
+
+    if (
+      toolId === "timeBasedRandomString" &&
+      result.ok &&
+      typeof result.data === "string"
+    ) {
+      startLiveResult(toolId, result.data.length);
+    } else {
+      stopLiveResult(toolId);
+    }
   };
 
   return (
@@ -218,19 +310,57 @@ export function LoaExplorer() {
                     >
                       Run
                     </Button>
+                    {tool.id === "timeBasedRandomString" && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full md:w-auto"
+                        onClick={() => stopLiveResult(tool.id)}
+                        disabled={!liveRunning[tool.id]}
+                      >
+                        Stop
+                      </Button>
+                    )}
                   </div>
-                  <ResultPanel
-                    result={results[tool.id] ?? null}
-                    hint={
-                      tool.id === "goldenRatioRound" ||
-                      tool.id === "strBetweenSpecialChar" ||
-                      tool.id === "fibonacciRectDraw"
-                        ? "Check browser console for extra LOA logs."
-                        : tool.id === "stringToHslColor"
-                          ? "Result is both a raw HSL string and a live color preview."
-                          : undefined
-                    }
-                  />
+                  {(() => {
+                    const r = results[tool.id];
+                    const canCopyStoppedString =
+                      tool.id === "timeBasedRandomString" &&
+                      !liveRunning[tool.id] &&
+                      r !== null &&
+                      r !== undefined &&
+                      r.ok &&
+                      typeof r.data === "string";
+
+                    return (
+                      <ResultPanel
+                        result={r ?? null}
+                        hint={
+                          tool.id === "goldenRatioRound" ||
+                          tool.id === "strBetweenSpecialChar" ||
+                          tool.id === "fibonacciRectDraw"
+                            ? "Check browser console for extra LOA logs."
+                            : tool.id === "timeBasedRandomString"
+                              ? "Live mode enabled: value mutates in real time until Reset."
+                              : tool.id === "stringToHslColor"
+                                ? "Result is both a raw HSL string and a live color preview."
+                                : undefined
+                        }
+                        action={
+                          canCopyStoppedString ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 px-2"
+                              onClick={() => void copyResultString(tool.id)}
+                            >
+                              <Copy className="size-2" />
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    );
+                  })()}
                   <LoaWarningTerminal warnings={results[tool.id]?.warnings} />
                 </CardContent>
               </Card>
@@ -242,7 +372,8 @@ export function LoaExplorer() {
                     Password from email + image
                   </CardTitle>
                   <p className="text-xs text-muted-foreground md:text-sm">
-                    Generate a deterministic password from an email address and a PNG/JPG image (limited to 10 MB).
+                    Generate a deterministic password from an email address and
+                    a PNG/JPG image (limited to 10 MB).
                   </p>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-3">
@@ -305,9 +436,7 @@ export function LoaExplorer() {
                     result={uuidImageResult}
                     hint="Result is a deterministic password based on email + image bytes."
                   />
-                  <LoaWarningTerminal
-                    warnings={uuidImageResult?.warnings}
-                  />
+                  <LoaWarningTerminal warnings={uuidImageResult?.warnings} />
                 </CardContent>
               </Card>
             )}
